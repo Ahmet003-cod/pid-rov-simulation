@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PID Kontrol Simülasyonu</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Chart.js for graphing -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.js"></script>
+</head>
+<body>
+    <div class="app-container">
+        <header>
+            <h1>PID Kontrol Simülasyonu</h1>
+            <p>PID kontrol parametrelerini kullanarak İnsansız Denizaltıyı (ROV) su altı dinamiklerine rağmen hedef derinliğe ulaştırın ve orada sabit tutun.</p>
+        </header>
+
+        <main class="dashboard">
+            <!-- Sol Panel: Kontroller -->
+            <section class="controls panel glass">
+                <h2>Kontrol Paneli</h2>
+                
+                <div class="control-group">
+                    <div class="control-header">
+                        <label for="kp">Kp (Oransal)</label>
+                        <span id="kp-val" class="value-display">0.500</span>
+                    </div>
+                    <input type="range" id="kp" min="0" max="15" step="0.01" value="0.5">
+                    <small>Mevcut hatayla orantılı tepki verir. Hızlı tepki sağlar ancak salınım yapabilir.</small>
+                </div>
+
+                <div class="control-group">
+                    <div class="control-header">
+                        <label for="ki">Ki (İntegral)</label>
+                        <span id="ki-val" class="value-display">0.000</span>
+                    </div>
+                    <input type="range" id="ki" min="0" max="5" step="0.001" value="0.0">
+                    <small>Geçmiş hataların toplamına göre tepki verir. Kalıcı durum hatasını sıfırlar.</small>
+                </div>
+
+                <div class="control-group">
+                    <div class="control-header">
+                        <label for="kd">Kd (Türevsel)</label>
+                        <span id="kd-val" class="value-display">0.100</span>
+                    </div>
+                    <input type="range" id="kd" min="0" max="20" step="0.005" value="0.1">
+                    <small>Hatanın değişim hızına göre tepki verir. Salınımı azaltır, sistemi frenler.</small>
+                </div>
+
+                <hr class="divider">
+
+                <div class="control-group">
+                    <div class="control-header">
+                        <label for="density">Su Yoğunluğu</label>
+                        <span id="density-val" class="value-display">1.00</span>
+                    </div>
+                    <input type="range" id="density" min="0.8" max="1.5" step="0.01" value="1.0">
+                    <small>Suyun kaldırma kuvvetini (Buoyancy) ve hareket direncini doğrudan etkiler.</small>
+                </div>
+
+                <div class="control-group">
+                    <div class="control-header">
+                        <label for="depth-effect">Derinlik Direnci (Akıntı/Basınç)</label>
+                        <span id="depth-effect-val" class="value-display">1.0</span>
+                    </div>
+                    <input type="range" id="depth-effect" min="0" max="5" step="0.1" value="1.0">
+                    <small>Derine inildikçe artan basıncın ve su içi akıntıların araca uyguladığı ekstra sönümleme (sürtünme) çarpanı.</small>
+                </div>
+
+                <hr class="divider">
+
+                <div class="control-group">
+                    <div class="control-header">
+                        <label for="setpoint">Hedef Derinlik (Setpoint)</label>
+                        <span id="setpoint-val" class="value-display">50</span>
+                    </div>
+                    <input type="range" id="setpoint" min="10" max="90" step="1" value="50">
+                    <small>Sistemin ulaşmasını istediğiniz hedef nokta.</small>
+                </div>
+
+                <div style="display: flex; gap: 1rem; margin-top: 1rem;">
+                    <button id="start-btn" class="btn-primary" style="flex: 1; margin-top: 0; background-color: var(--success); box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4);">Başlat</button>
+                    <button id="reset-btn" class="btn-primary" style="flex: 1; margin-top: 0;">Sıfırla</button>
+                </div>
+
+                <div class="info-card" style="margin-top: 1.5rem; background: rgba(14, 165, 233, 0.1); border-left: 4px solid var(--accent); padding: 1rem; border-radius: 8px;">
+                    <h3 style="font-size: 1rem; color: #bae6fd; margin-bottom: 0.5rem;">İdeal PID Değerleri Nasıl Bulunur?</h3>
+                    <p style="font-size: 0.85rem; color: #94a3b8; line-height: 1.5;">
+                        <strong style="color:#f8fafc;">1. Aşama:</strong> Önce I ve D'yi sıfırlayın. Kp'yi (Örn: <strong>2.50</strong>) belirleyin. Sistem hızla hedefe yaklaşıp etrafında yaylanmaya (salınım) başlayacaktır.<br><br>
+                        <strong style="color:#f8fafc;">2. Aşama:</strong> Yaylanmayı durdurmak için Kd'yi artırın (Örn: <strong>5.000</strong>). Sistem artık daha stabil ancak hedefin tam üstüne çıkamıyor, biraz altında/üstünde kalıyor olabilir.<br><br>
+                        <strong style="color:#f8fafc;">3. Aşama:</strong> Kalıcı hatayı sıfırlamak için Ki'yi (Örn: <strong>0.200</strong>) yavaşça artırın. Sistem tam çizgide oturacaktır!<br><br>
+                        <em>Tavsiye Edilen (Su=1.00): Kp=3.0, Ki=0.3, Kd=6.5</em>
+                    </p>
+                </div>
+            </section>
+
+            <!-- Orta/Sağ Panel: Görselleştirme ve Grafik -->
+            <section class="visualization-area">
+                <div class="simulation-view panel glass">
+                    <h2>Fiziksel Simülasyon (İnsansız Denizaltı - ROV)</h2>
+                    <div class="canvas-container">
+                        <canvas id="simCanvas" width="600" height="400"></canvas>
+                    </div>
+                </div>
+
+                <div class="chart-view panel glass">
+                    <h2>Zaman - Yanıt Grafiği</h2>
+                    <div class="canvas-container">
+                        <canvas id="chartCanvas"></canvas>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
